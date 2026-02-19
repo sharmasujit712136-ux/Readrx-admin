@@ -3,41 +3,31 @@
 <head>
   <title>Admin Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <style>
-    body{
-      font-family: Arial;
-      background:#f4f6f9;
-      padding:20px;
-    }
-    .card{
-      background:white;
-      padding:20px;
-      margin:10px 0;
-      border-radius:12px;
-      box-shadow:0 3px 10px rgba(0,0,0,0.1);
-    }
-    button{
-      padding:8px 12px;
-      border:none;
-      border-radius:6px;
-      cursor:pointer;
-      background:red;
-      color:white;
-    }
+    body{ font-family: Arial; background:#f4f6f9; padding:20px; }
+    .card{ background:white; padding:20px; margin:10px 0; border-radius:12px; box-shadow:0 3px 10px rgba(0,0,0,0.1); }
+    .btn-nav{ padding:10px; margin:5px; border:none; border-radius:6px; cursor:pointer; background:#007bff; color:white; }
+    .logout-btn{ background:red; color:white; padding:8px 12px; border:none; border-radius:6px; float:right; }
   </style>
 </head>
-
 <body>
 
+<button class="logout-btn" onclick="logout()">Logout</button>
 <h2>🚑 Admin Dashboard</h2>
-<button onclick="logout()">Logout</button>
 
-<div class="card" id="stats"></div>
+<div class="card" id="stats">Loading Stats...</div>
+
+<div class="card">
+  <h3>Quick Actions</h3>
+  <button class="btn-nav" onclick="window.location.href='admin-driver.html'">Manage Drivers</button>
+  <button class="btn-nav" onclick="window.location.href='admin-withdraw.html'">Withdraw Requests</button>
+  <button class="btn-nav" onclick="window.location.href='admin-referral.html'">Referral Monitoring</button>
+  <button class="btn-nav" onclick="window.location.href='admin-tracking.html'">Live Tracking</button>
+</div>
 
 <script>
 const firebaseConfig = {
@@ -50,29 +40,21 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+// Check Login Status - index.html par bhejein agar login nahi hai
 firebase.auth().onAuthStateChanged(user=>{
-  if(!user){
-    window.location.href="admin-login.html";
-  }
+  if(!user){ window.location.href="index.html"; }
 });
 
 function logout(){
-  firebase.auth().signOut().then(()=>{
-    window.location.href="admin-login.html";
-  });
+  firebase.auth().signOut().then(()=>{ window.location.href="index.html"; });
 }
 
 db.ref("drivers").on("value", snap=>{
   const data = snap.val();
-
-  let totalDrivers = 0;
-  let onlineDrivers = 0;
-  let blockedDrivers = 0;
-  let totalWallet = 0;
+  let totalDrivers = 0, onlineDrivers = 0, blockedDrivers = 0, totalWallet = 0;
 
   if(data){
     totalDrivers = Object.keys(data).length;
-
     for(let id in data){
       if(data[id].status === "online") onlineDrivers++;
       if(data[id].isBlocked === true) blockedDrivers++;
@@ -81,23 +63,12 @@ db.ref("drivers").on("value", snap=>{
   }
 
   document.getElementById("stats").innerHTML = `
-    Total Drivers: ${totalDrivers}<br><br>
-    Online Drivers: ${onlineDrivers}<br><br>
-    Blocked Drivers: ${blockedDrivers}<br><br>
-    Total Wallet Balance: ₹${totalWallet}
+    <b>Total Drivers:</b> ${totalDrivers}<br><br>
+    <b>Online Drivers:</b> ${onlineDrivers}<br><br>
+    <b>Blocked Drivers:</b> ${blockedDrivers}<br><br>
+    <b>Total Wallet Balance:</b> ₹${totalWallet}
   `;
 });
-<button onclick="window.location.href='admin-drivers.html'">
-Manage Drivers
-</button>
-<button onclick="window.location.href='admin-withdraw.html'">
-Withdraw Requests
-</button>
-<button onclick="window.location.href='admin-referral.html'">
-Referral Monitoring
-</button>
-
 </script>
-
 </body>
 </html>
