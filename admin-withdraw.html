@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Withdraw Requests</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    body{font-family:Arial;background:#f4f6f9;padding:20px;}
+    .card{
+      background:white;
+      padding:15px;
+      margin:10px 0;
+      border-radius:10px;
+      box-shadow:0 3px 10px rgba(0,0,0,0.1);
+    }
+    button{
+      padding:6px 10px;
+      border:none;
+      border-radius:6px;
+      cursor:pointer;
+      margin-right:5px;
+    }
+    .approve{background:green;color:white;}
+    .reject{background:red;color:white;}
+  </style>
+</head>
+
+<body>
+
+<h2>💳 Withdraw Requests</h2>
+<button onclick="window.location.href='admin-dashboard.html'">⬅ Back</button>
+
+<div id="requests"></div>
+
+<script>
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDu8l_5KV069EF2brdelpFSeD-RvYUPHYo",
+  authDomain: "suijit-1b27f.firebaseapp.com",
+  databaseURL: "https://suijit-1b27f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "suijit-1b27f"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+firebase.auth().onAuthStateChanged(user=>{
+  if(!user){
+    window.location.href="admin-login.html";
+  }
+});
+
+db.ref("withdrawRequests").on("value", snap=>{
+  const data = snap.val();
+  let html="";
+
+  if(!data){
+    html="No Withdraw Requests";
+  }else{
+    for(let id in data){
+      const req = data[id];
+
+      if(req.status === "pending"){
+        html+=`
+        <div class="card">
+          Driver ID: ${req.driverId}<br>
+          Amount: ₹${req.amount}<br>
+          Status: ${req.status}<br><br>
+
+          <button class="approve" onclick="approve('${id}','${req.driverId}',${req.amount})">
+          Approve</button>
+
+          <button class="reject" onclick="reject('${id}')">
+          Reject</button>
+        </div>
+        `;
+      }
+    }
+  }
+
+  document.getElementById("requests").innerHTML = html;
+});
+
+function approve(requestId, driverId, amount){
+
+  db.ref("drivers/"+driverId+"/wallet/balance")
+  .once("value", snap=>{
+    let current = snap.val() || 0;
+
+    if(current < amount){
+      alert("Insufficient Balance");
+      return;
+    }
+
+    db.ref("drivers/"+driverId+"/wallet/balance")
+    .set(current - amount);
+
+    db.ref("withdrawRequests/"+requestId+"/status")
+    .set("approved");
+
+    alert("Withdraw Approved");
+  });
+}
+
+function reject(requestId){
+  db.ref("withdrawRequests/"+requestId+"/status")
+  .set("rejected");
+
+  alert("Withdraw Rejected");
+}
+
+</script>
+
+</body>
+</html>

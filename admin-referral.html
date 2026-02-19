@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Referral Monitoring</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    body{font-family:Arial;background:#f4f6f9;padding:20px;}
+    .card{
+      background:white;
+      padding:15px;
+      margin:10px 0;
+      border-radius:10px;
+      box-shadow:0 3px 10px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>🔗 Referral Monitoring</h2>
+<button onclick="window.location.href='admin-dashboard.html'">⬅ Back</button>
+
+<div id="referrals"></div>
+
+<script>
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDu8l_5KV069EF2brdelpFSeD-RvYUPHYo",
+  authDomain: "suijit-1b27f.firebaseapp.com",
+  databaseURL: "https://suijit-1b27f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "suijit-1b27f"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+firebase.auth().onAuthStateChanged(user=>{
+  if(!user){
+    window.location.href="admin-login.html";
+  }
+});
+
+db.ref("drivers").on("value", snap=>{
+  const data = snap.val();
+  let html="";
+
+  if(!data){
+    html="No Drivers Found";
+  }else{
+    for(let id in data){
+
+      const driver = data[id];
+
+      const totalReferral = driver.referral?.totalReferral || 0;
+      const linkA = driver.referral?.linkA || "";
+      const linkB = driver.referral?.linkB || "";
+
+      const earning = totalReferral * 100;
+
+      html+=`
+      <div class="card">
+        <b>${driver.name}</b><br>
+        🆔 Code: ${driver.driverCode}<br><br>
+
+        🔗 Link A: ${linkA}<br>
+        🔗 Link B: ${linkB}<br><br>
+
+        👥 Total Referral: ${totalReferral}<br>
+        💰 Referral Earning: ₹${earning}
+      </div>
+      `;
+    }
+  }
+
+  document.getElementById("referrals").innerHTML = html;
+});
+
+</script>
+
+</body>
+</html>

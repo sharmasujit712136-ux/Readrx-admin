@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Driver Profile</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<h2>Driver Profile</h2>
+<div id="profile"></div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDu8l_5KV069EF2brdelpFSeD-RvYUPHYo",
+  authDomain: "suijit-1b27f.firebaseapp.com",
+  databaseURL: "https://suijit-1b27f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "suijit-1b27f"
+};
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.database();
+
+const urlParams = new URLSearchParams(window.location.search);
+const id = urlParams.get("id");
+
+db.ref("drivers/"+id).once("value").then(snap=>{
+  const d = snap.val();
+  document.getElementById("profile").innerHTML = `
+    <b>Name:</b> ${d.name}<br>
+    <b>Phone:</b> ${d.phone}<br>
+    <b>Status:</b> ${d.status}<br>
+    <b>Wallet:</b> ₹${d.wallet?.balance || 0}<br>
+    <b>Total Referral:</b> ${d.referralCount || 0}
+  `;
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Driver Management</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    body{font-family:Arial;background:#f4f6f9;padding:20px;}
+    .card{
+      background:white;
+      padding:15px;
+      margin:10px 0;
+      border-radius:10px;
+      box-shadow:0 3px 10px rgba(0,0,0,0.1);
+    }
+    button{
+      padding:6px 10px;
+      border:none;
+      border-radius:6px;
+      cursor:pointer;
+      margin:5px 5px 0 0;
+    }
+    .block{background:orange;color:white;}
+    .delete{background:red;color:white;}
+    .wallet{background:green;color:white;}
+    input{
+      padding:8px;
+      width:100%;
+      margin-bottom:10px;
+      border-radius:6px;
+      border:1px solid #ccc;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>🚑 Driver Management</h2>
+<button onclick="window.location.href='admin-dashboard.html'">⬅ Back</button>
+
+<br><br>
+<input type="text" id="search" placeholder="Search by name or phone" onkeyup="loadDrivers()">
+
+<div id="drivers"></div>
+
+<script>
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDu8l_5KV069EF2brdelpFSeD-RvYUPHYo",
+  authDomain: "suijit-1b27f.firebaseapp.com",
+  databaseURL: "https://suijit-1b27f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "suijit-1b27f"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+firebase.auth().onAuthStateChanged(user=>{
+  if(!user){
+    window.location.href="admin-login.html";
+  }
+});
+
+function loadDrivers(){
+  const search = document.getElementById("search").value.toLowerCase();
+
+  db.ref("drivers").once("value", snap=>{
+    const data = snap.val();
+    let html="";
+
+    if(!data){
+      html="No Drivers Found";
+    }else{
+      for(let id in data){
+
+        const driver = data[id];
+
+        if(
+          driver.name.toLowerCase().includes(search) ||
+          driver.phone.includes(search)
+        ){
+
+          html+=`
+          <div class="card">
+            <b>${driver.name}</b><br>
+            📞 ${driver.phone}<br>
+            🆔 ${driver.driverCode}<br>
+            🟢 Status: ${driver.status}<br>
+            🚫 Blocked: ${driver.isBlocked ? "Yes" : "No"}<br>
+            💰 Wallet: ₹${driver.wallet?.balance || 0}<br>
+
+            <button class="block" onclick="toggleBlock('${id}', ${driver.isBlocked})">
+              ${driver.isBlocked ? "Unblock" : "Block"}
+            </button>
+
+            <button class="wallet" onclick="addMoney('${id}')">+₹</button>
+            <button class="delete" onclick="deleteDriver('${id}')">Delete</button>
+          </div>
+          `;
+        }
+      }
+    }
+
+    document.getElementById("drivers").innerHTML = html;
+  });
+}
+
+loadDrivers();
+
+function toggleBlock(id,current){
+  db.ref("drivers/"+id+"/isBlocked").set(!current);
+  alert("Updated");
+  loadDrivers();
+}
+
+function deleteDriver(id){
+  if(confirm("Delete Driver?")){
+    db.ref("drivers/"+id).remove();
+    loadDrivers();
+  }
+}
+
+function addMoney(id){
+  let amount = prompt("Enter Amount:");
+  amount = parseInt(amount);
+
+  if(isNaN(amount)) return;
+
+  db.ref("drivers/"+id+"/wallet/balance")
+  .once("value", snap=>{
+    let current = snap.val() || 0;
+    db.ref("drivers/"+id+"/wallet/balance")
+    .set(current + amount);
+    alert("Wallet Updated");
+    loadDrivers();
+  });
+}
+
+</script>
+
+</body>
+</html>
