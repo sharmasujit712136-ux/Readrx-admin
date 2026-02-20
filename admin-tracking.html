@@ -1,39 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Live Driver Tracking</title>
+  <title>Live Driver Tracking - ReadRx</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 
   <style>
     body { margin:0; font-family:Arial; }
-    #map { height:100vh; }
-    .topbar{
+    #map { height:100vh; width: 100%; }
+    .topbar {
       position:absolute;
       top:10px;
       left:10px;
       background:white;
-      padding:10px;
+      padding:15px;
       border-radius:8px;
       z-index:1000;
       box-shadow:0 3px 10px rgba(0,0,0,0.2);
     }
-    button{
-      padding:5px 10px;
+    .back-btn {
+      padding:8px 15px;
       border:none;
-      background:red;
+      background:#007bff;
       color:white;
       border-radius:5px;
       cursor:pointer;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -41,14 +39,13 @@
 <body>
 
 <div class="topbar">
-  <b>🚑 Live Drivers Map (OSM)</b><br><br>
-  <button onclick="window.location.href='admin-dashboard.html'">Back</button>
+  <b>🚑 Live Drivers Map</b><br><br>
+  <button class="back-btn" onclick="window.location.href='admin-dashboard.html'">⬅ Back</button>
 </div>
 
 <div id="map"></div>
 
 <script>
-
 // 🔥 Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyDu8l_5KV069EF2brdelpFSeD-RvYUPHYo",
@@ -60,100 +57,53 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// 🔐 Login Check
-firebase.auth().onAuthStateChanged(user=>{
-  if(!user){
-    window.location.href="admin-login.html";
-  }
-});
-
-// 🗺 Map Init
-const map = L.map('map').setView([20.5937, 78.9629], 5);
-
+// 1. Map Initialize (Kolkata default center)
+const map = L.map('map').setView([22.5726, 88.3639], 12); 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; OpenStreetMap contributors'
+    attribution: '© OpenStreetMap contributors'
 }).addTo(map);
 
-let markers = {};
-let heatLayer;
-
-db.ref("drivers").on("value", snap=>{
-  let heatPoints = [];
-  const data = snap.val();
-
-  if(data){
-    for(let id in data){
-      if(data[id].lat && data[id].lng){
-        heatPoints.push([
-          parseFloat(data[id].lat),
-          parseFloat(data[id].lng),
-          0.5
-        ]);
-      }
-    }
-  }
-
-  if(heatLayer){
-    map.removeLayer(heatLayer);
-  }
-
-  heatLayer = L.heatLayer(heatPoints, {radius:25});
-  heatLayer.addTo(map);
-});
-db.ref("rideRequests").on("value", snap=>{
-  const rides = snap.val();
-
-  if(rides){
-    for(let r in rides){
-      const ride = rides[r];
-
-      if(ride.status === "active"){
-        L.marker([ride.pickupLat, ride.pickupLng])
-          .addTo(map)
-          .bindPopup("Pickup: " + ride.customerName);
-      }
-    }
-  }
-});
+// 2. Ambulance PNG Icon Setup
 const ambulanceIcon = L.icon({
-  iconUrl: 'ambulance.png',
-  iconSize: [35, 35],
-  iconAnchor: [17, 35]
+    iconUrl: 'ambulance.png', // Aapki uploaded file ka naam
+    iconSize: [45, 45],       
+    iconAnchor: [22, 22],     
+    popupAnchor: [0, -20]
 });
 
+let markers = {};
 
-// 🔴 Real Time Tracking
-db.ref("drivers").on("value", snap=>{
-  const data = snap.val();
-
-  // remove old markers
-  for(let id in markers){
-    map.removeLayer(markers[id]);
-  }
-  markers = {};
-
-  if(data){
-    for(let id in data){
+// 3. Firebase se Live Location read karein
+db.ref("drivers").on("value", (snapshot) => {
+  const data = snapshot.val();
+  if (data) {
+    for (let id in data) {
       const driver = data[id];
-
-      if(driver.status === "online" && driver.lat && driver.lng){
-
-        const marker = L.marker([
-          parseFloat(driver.lat),
-          parseFloat(driver.lng)
-        ]).addTo(map)
-        marker.on("click", function(){
-   window.location.href = "driver-profile.html?id=" + id;
-});
-
-
-        markers[id] = marker;
+      
+      // Location check
+      if (driver.lat && driver.lng) {
+        if (markers[id]) {
+          // Purane marker ko move karein
+          markers[id].setLatLng([driver.lat, driver.lng]);
+        } else {
+          // Naya Ambulance Marker map par lagayein
+          markers[id] = L.marker([driver.lat, driver.lng], { icon: ambulanceIcon })
+            .addTo(map)
+            .bindPopup(`<b>${driver.name || 'Driver'}</b><br>Status: ${driver.status || 'Offline'}`);
+        }
       }
     }
   }
 });
 
+// 4. Login Check (Security)
+firebase.auth().onAuthStateChanged(user => {
+  if(!user) { 
+    window.location.href="index.html"; //
+  }
+});
 </script>
 
 </body>
 </html>
+
