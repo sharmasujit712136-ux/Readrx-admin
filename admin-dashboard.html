@@ -1,37 +1,78 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Admin Dashboard</title>
+  <title>ReadRx Admin Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <style>
-    body{ font-family: Arial; background:#f4f6f9; padding:20px; }
-    .card{ background:white; padding:20px; margin:10px 0; border-radius:12px; box-shadow:0 3px 10px rgba(0,0,0,0.1); }
-    .btn-nav{ padding:10px; margin:5px; border:none; border-radius:6px; cursor:pointer; background:#007bff; color:white; }
-    .logout-btn{ background:red; color:white; padding:8px 12px; border:none; border-radius:6px; float:right; }
+    body{ font-family: Arial, sans-serif; background:#f4f6f9; padding:20px; color: #333; }
+    .card{ background:white; padding:20px; margin:15px 0; border-radius:12px; box-shadow:0 3px 10px rgba(0,0,0,0.1); }
+    h2, h4 { margin-top: 0; }
+    button { padding:12px; border:none; border-radius:8px; cursor:pointer; font-weight: bold; transition: 0.3s; }
+    .logout-btn { background: #ff4d4d; color: white; float: right; }
+    .tracking-btn { background: #2196F3; color: white; width: 100%; font-size: 16px; margin-bottom: 10px; }
+    .update-btn { background: #4CAF50; color: white; width: 100%; margin-top: 10px; }
+    .broadcast-btn { background: #FF9800; color: white; width: 100%; margin-top: 5px; }
+    .nav-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .nav-btn { background: #607D8B; color: white; width: 100%; font-size: 14px; }
+    input, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-family: inherit; }
   </style>
 </head>
+
 <body>
 
 <button class="logout-btn" onclick="logout()">Logout</button>
-<h2>🚑 Admin Dashboard</h2>
+<h2>🚑 ReadRx Admin</h2>
 
-<div class="card" id="stats">Loading Stats...</div>
+<div class="card" id="stats">📊 Loading Dashboard Stats...</div>
 
 <div class="card">
-  <h3>Quick Actions</h3>
-  <button class="btn-nav" onclick="window.location.href='admin-driver.html'">Manage Drivers</button>
-  <button class="btn-nav" onclick="window.location.href='admin-withdraw.html'">Withdraw Requests</button>
-  <button class="btn-nav" onclick="window.location.href='admin-referral.html'">Referral Monitoring</button>
-  <button class="btn-nav" onclick="window.location.href='admin-tracking.html'">Live Tracking</button>
+  <h4>Driver Location</h4>
+  <button class="tracking-btn" onclick="window.location.href='admin-tracking.html'">
+    📍 Open Live Driver Tracking
+  </button>
+</div>
+
+<div class="card">
+  <h4>📢 Broadcast Message (Real-time)</h4>
+  
+  <label><b>Message for Drivers:</b></label>
+  <textarea id="driverMsg" placeholder="Type offer/alert for Drivers..."></textarea>
+  <button class="broadcast-btn" onclick="sendToDriver()">Send to Drivers</button>
+  
+  <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+  
+  <label><b>Message for Patients:</b></label>
+  <textarea id="patientMsg" placeholder="Type offer/alert for Patients..."></textarea>
+  <button class="broadcast-btn" style="background: #9C27B0;" onclick="sendToPatient()">Send to Patients</button>
+</div>
+
+<div class="card">
+  <h4>Update Driver App Links</h4>
+  <label>Button 1 Link:</label>
+  <input type="text" id="link1" placeholder="https://...">
+  <label>Button 2 Link:</label>
+  <input type="text" id="link2" placeholder="https://...">
+  <button class="update-btn" onclick="updateButtons()">Save & Sync Links</button>
+</div>
+
+<div class="card">
+  <h4>Management</h4>
+  <div class="nav-grid">
+    <button class="nav-btn" onclick="window.location.href='admin-drivers.html'">Drivers</button>
+    <button class="nav-btn" onclick="window.location.href='admin-withdraw.html'">Withdraws</button>
+    <button class="nav-btn" onclick="window.location.href='admin-referral.html'">Referrals</button>
+  </div>
 </div>
 
 <script>
+// Firebase Configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDu8l_5KV069EF2brdelpFSeD-RvYUPHYo", 
+  apiKey: "AIzaSyDu8l_5KV069EF2brdelpFSeD-RvYUPHYo",
   authDomain: "suijit-1b27f.firebaseapp.com",
   databaseURL: "https://suijit-1b27f-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "suijit-1b27f"
@@ -40,35 +81,56 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// Check Login Status - index.html par bhejein agar login nahi hai
-firebase.auth().onAuthStateChanged(user=>{
-  if(!user){ window.location.href="index.html"; }
+// Auth Check
+firebase.auth().onAuthStateChanged(user => {
+  if(!user) window.location.href="admin-login.html";
 });
 
-function logout(){
-  firebase.auth().signOut().then(()=>{ window.location.href="index.html"; });
+function logout() {
+  firebase.auth().signOut().then(() => window.location.href="admin-login.html");
 }
 
-db.ref("drivers").on("value", snap=>{
-  const data = snap.val();
-  let totalDrivers = 0, onlineDrivers = 0, blockedDrivers = 0, totalWallet = 0;
+// 1. Send to Driver
+function sendToDriver() {
+  const msg = document.getElementById('driverMsg').value;
+  if(!msg) return alert("Message khali hai!");
+  db.ref('broadcast/driver/').set({ message: msg, time: Date.now() })
+    .then(() => alert("Driver ko message bhej diya gaya!"));
+}
 
-  if(data){
-    totalDrivers = Object.keys(data).length;
-    for(let id in data){
-      if(data[id].status === "online") onlineDrivers++;
-      if(data[id].isBlocked === true) blockedDrivers++;
-      totalWallet += data[id].wallet?.balance || 0;
+// 2. Send to Patient
+function sendToPatient() {
+  const msg = document.getElementById('patientMsg').value;
+  if(!msg) return alert("Message khali hai!");
+  db.ref('broadcast/patient/').set({ message: msg, time: Date.now() })
+    .then(() => alert("Patient ko message bhej diya gaya!"));
+}
+
+// Update App Links
+function updateButtons() {
+  const l1 = document.getElementById('link1').value;
+  const l2 = document.getElementById('link2').value;
+  if(!l1 || !l2) return alert("Donon link bhariye!");
+
+  db.ref('driver_buttons/').set({ btn1: l1, btn2: l2 })
+    .then(() => alert("Links updated!"));
+}
+
+// Stats Listener
+db.ref("drivers").on("value", snap => {
+  const data = snap.val();
+  let total = 0, online = 0, blocked = 0, wallet = 0;
+  if(data) {
+    total = Object.keys(data).length;
+    for(let id in data) {
+      if(data[id].status === "online") online++;
+      if(data[id].isBlocked) blocked++;
+      wallet += data[id].wallet?.balance || 0;
     }
   }
-
-  document.getElementById("stats").innerHTML = `
-    <b>Total Drivers:</b> ${totalDrivers}<br><br>
-    <b>Online Drivers:</b> ${onlineDrivers}<br><br>
-    <b>Blocked Drivers:</b> ${blockedDrivers}<br><br>
-    <b>Total Wallet Balance:</b> ₹${totalWallet}
-  `;
+  document.getElementById("stats").innerHTML = `<b>Total Drivers:</b> ${total} | <b>Online:</b> ${online}<br><br><b>Blocked:</b> ${blocked} | <b>Wallet:</b> ₹${wallet}`;
 });
 </script>
+
 </body>
 </html>
