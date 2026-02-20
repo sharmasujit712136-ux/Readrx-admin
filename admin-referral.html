@@ -3,7 +3,6 @@
 <head>
   <title>Referral Monitoring</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -17,18 +16,27 @@
       border-radius:10px;
       box-shadow:0 3px 10px rgba(0,0,0,0.1);
     }
+    .share-btn {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 5px;
+      font-size: 12px;
+    }
+    .back-btn { padding: 8px 15px; margin-bottom: 10px; cursor: pointer; }
   </style>
 </head>
-
 <body>
 
 <h2>🔗 Referral Monitoring</h2>
-<button onclick="window.location.href='admin-dashboard.html'">⬅ Back</button>
+<button class="back-btn" onclick="window.location.href='admin-dashboard.html'">⬅ Back</button>
 
-<div id="referrals"></div>
+<div id="referrals">Loading...</div>
 
 <script>
-
 const firebaseConfig = {
   apiKey: "AIzaSyDu8l_5KV069EF2brdelpFSeD-RvYUPHYo",
   authDomain: "suijit-1b27f.firebaseapp.com",
@@ -39,36 +47,48 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+// Redirect to index.html if not logged in
 firebase.auth().onAuthStateChanged(user=>{
-  if(!user){
-    window.location.href="admin-login.html";
-  }
+  if(!user){ window.location.href="index.html"; }
 });
+
+// Function to share link
+function shareLink(url, driverName) {
+  if (navigator.share) {
+    navigator.share({
+      title: 'ReadRx Referral',
+      text: 'Join ReadRx using referral from ' + driverName,
+      url: url
+    }).catch(err => console.log(err));
+  } else {
+    navigator.clipboard.writeText(url);
+    alert("Link copied to clipboard!");
+  }
+}
 
 db.ref("drivers").on("value", snap=>{
   const data = snap.val();
   let html="";
-
   if(!data){
     html="No Drivers Found";
   }else{
     for(let id in data){
-
       const driver = data[id];
-
       const totalReferral = driver.referral?.totalReferral || 0;
-      const linkA = driver.referral?.linkA || "";
-      const linkB = driver.referral?.linkB || "";
-
+      const linkA = driver.referral?.linkA || "No Link";
+      const linkB = driver.referral?.linkB || "No Link";
       const earning = totalReferral * 100;
 
       html+=`
       <div class="card">
-        <b>${driver.name}</b><br>
-        🆔 Code: ${driver.driverCode}<br><br>
+        <b>👤 ${driver.name || 'Unknown Driver'}</b><br>
+        🆔 Code: ${driver.driverCode || 'N/A'}<br><br>
 
-        🔗 Link A: ${linkA}<br>
-        🔗 Link B: ${linkB}<br><br>
+        🔗 <b>Link A:</b> ${linkA}<br>
+        <button class="share-btn" onclick="shareLink('${linkA}', '${driver.name}')">Share Link A</button><br><br>
+
+        🔗 <b>Link B:</b> ${linkB}<br>
+        <button class="share-btn" onclick="shareLink('${linkB}', '${driver.name}')">Share Link B</button><br><br>
 
         👥 Total Referral: ${totalReferral}<br>
         💰 Referral Earning: ₹${earning}
@@ -76,11 +96,8 @@ db.ref("drivers").on("value", snap=>{
       `;
     }
   }
-
   document.getElementById("referrals").innerHTML = html;
 });
-
 </script>
-
 </body>
 </html>
