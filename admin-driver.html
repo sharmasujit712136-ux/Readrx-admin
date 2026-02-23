@@ -50,7 +50,7 @@
 <script>
 
 const firebaseConfig = {
-  apiKey:
+  apiKey:"AIzaSyD7XHGFI0wAua4ww4OR19X34lBrfh0fExE", 
   authDomain: "suijit-1b27f.firebaseapp.com",
   databaseURL: "https://suijit-1b27f-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "suijit-1b27f"
@@ -69,7 +69,7 @@ function loadDrivers(){
   const search = document.getElementById("search").value.toLowerCase();
 
   db.ref("drivers").once("value", snap=>{
-    const data = snap.val();
+    const",data = snap.val();
     let html="";
 
     if(!data){
@@ -144,4 +144,5 @@ function addMoney(id){
 
 </body>
 </html>
+
 
